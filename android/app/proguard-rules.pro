@@ -16,3 +16,8 @@
 
 # Flutter Secure Storage
 -keep class com.it_nomads.fluttersecurestorage.** { *; }
+
+# Prevent R8 from complaining about Play Store missing classes
+-dontwarn com.google.android.play.**
+-dontwarn io.flutter.embedding.engine.deferredcomponents.PlayStoreDeferredComponentManager
+-dontwarn io.flutter.**

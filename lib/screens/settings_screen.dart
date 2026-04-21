@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../services/export_service.dart';
+import '../services/lock_service.dart';
+import '../services/transaction_service.dart';
 
-/// Settings screen with auth toggle and future-ready options.
+/// Settings screen with auth toggle, CSV export, and security options.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -15,8 +18,8 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: Consumer<AuthService>(
-        builder: (context, auth, _) {
+      body: Consumer2<AuthService, LockService>(
+        builder: (context, auth, lock, _) {
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: [
@@ -52,13 +55,13 @@ class SettingsScreen extends StatelessWidget {
               // ── Data Section ─────────────────────────────────
               _SectionHeader(title: 'Data'),
               _SettingsTile(
-                icon: Icons.sync_outlined,
-                title: 'Cloud Sync',
-                subtitle: 'Coming soon',
-                trailing: Switch(
-                  value: false,
-                  onChanged: null, // Disabled - future feature
-                ),
+                icon: Icons.download_outlined,
+                title: 'Export Data',
+                subtitle: 'Export transactions to CSV',
+                onTap: () async {
+                  final exportService = ExportService(context.read<TransactionService>());
+                  await exportService.exportToCsv();
+                },
               ),
               _SettingsTile(
                 icon: Icons.storage_outlined,
@@ -75,10 +78,12 @@ class SettingsScreen extends StatelessWidget {
               _SettingsTile(
                 icon: Icons.lock_outline,
                 title: 'App Lock',
-                subtitle: 'PIN or biometric • Coming soon',
+                subtitle: 'Require PIN or biometric to open',
                 trailing: Switch(
-                  value: false,
-                  onChanged: null, // Disabled - future feature
+                  value: lock.isAppLockEnabled,
+                  onChanged: (val) {
+                    lock.toggleAppLock(val);
+                  },
                 ),
               ),
 

@@ -8,6 +8,7 @@ import 'models/transaction_model.dart';
 import 'services/storage_service.dart';
 import 'services/transaction_service.dart';
 import 'services/auth_service.dart';
+import 'services/lock_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,25 +26,28 @@ void main() async {
   final storageService = StorageService();
   final encryptionKey = await storageService.getEncryptionKey();
 
-  // Open encrypted Hive box
+  // Open encrypted Hive boxes
   await Hive.openBox<TransactionModel>(
     'transactions',
     encryptionCipher: HiveAesCipher(encryptionKey),
   );
 
-  await Hive.openBox('settings',
+  await Hive.openBox(
+    'settings',
     encryptionCipher: HiveAesCipher(encryptionKey),
   );
 
   // Initialize services
   final transactionService = TransactionService();
   final authService = AuthService();
+  final lockService = LockService();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: transactionService),
         ChangeNotifierProvider.value(value: authService),
+        ChangeNotifierProvider.value(value: lockService),
       ],
       child: const CashVaultApp(),
     ),
