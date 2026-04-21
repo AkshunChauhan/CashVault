@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/export_service.dart';
 import '../services/lock_service.dart';
 import '../services/transaction_service.dart';
+import '../services/report_issue_service.dart';
 
 /// Settings screen with auth toggle, CSV export, and security options.
 class SettingsScreen extends StatelessWidget {
@@ -90,16 +91,42 @@ class SettingsScreen extends StatelessWidget {
               const Divider(indent: 16, endIndent: 16),
 
               // ── About Section ────────────────────────────────
-              _SectionHeader(title: 'About'),
+              _SectionHeader(title: 'About & Support'),
               _SettingsTile(
                 icon: Icons.info_outline,
-                title: 'CashVault',
-                subtitle: 'Version 1.0.0',
+                title: 'App Info',
+                subtitle: 'Version, Credits & Legal',
+                onTap: () {
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'CashVault',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese: '© 2026 Akshun Chauhan',
+                    applicationIcon: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset('assets/logo.png', width: 48, height: 48),
+                    ),
+                    children: [
+                      const SizedBox(height: 16),
+                      const Text('Developer: Akshun Chauhan'),
+                      const SizedBox(height: 8),
+                      const Text('Support: Local Offline Documentation (README.md)'),
+                      const SizedBox(height: 8),
+                      const Text('Built with privacy as the absolute priority. Your data never leaves your device unless you explicitly enable cloud features.'),
+                    ],
+                  );
+                },
+              ),
+              _SettingsTile(
+                icon: Icons.bug_report_outlined,
+                title: 'Report an Issue',
+                subtitle: 'Send feedback to the developer',
+                onTap: () => _showReportIssueDialog(context, auth),
               ),
               _SettingsTile(
                 icon: Icons.shield_outlined,
-                title: 'Privacy',
-                subtitle: 'Your data never leaves your device',
+                title: 'Privacy Focus',
+                subtitle: 'Your data never leaves your device by default',
               ),
 
               const SizedBox(height: 32),
@@ -107,7 +134,7 @@ class SettingsScreen extends StatelessWidget {
               // Footer
               Center(
                 child: Text(
-                  'Built with privacy in mind',
+                  'Crafted by Akshun Chauhan',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
                   ),
@@ -118,6 +145,81 @@ class SettingsScreen extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  void _showReportIssueDialog(BuildContext context, AuthService auth) {
+    final controller = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Report Issue'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Explain the issue you are facing or suggest a feature. This will be sent directly to the developer.'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Describe the issue...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (!auth.isSignedIn) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Note: You are not signed in. Reports will be sent anonymously.',
+                      style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.error),
+                    ),
+                  ]
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (controller.text.trim().isEmpty) return;
+                          
+                          setState(() => isSubmitting = true);
+                          
+                          // Calls our service
+                          // Note: Once Firebase is configured, this links to the Firestore logic.
+                          final service = ReportIssueService();
+                          await service.submitIssueMock(
+                            controller.text.trim(),
+                            auth.userEmail ?? 'Anonymous',
+                          );
+
+                          if (ctx.mounted) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Thank you! Issue recorded. (Requires Firebase setup to sync).'),
+                              ),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Submit'),
+                ),
+              ],
+            );
+          }
+        );
+      },
     );
   }
 
