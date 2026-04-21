@@ -1,0 +1,18 @@
+# This file tracks properties of this Flutter project.
+# Used by Flutter tool to assess capabilities and perform upgrades etc.
+
+version:
+  revision: "xyz"
+  channel: "stable"
+
+project_type: app
+
+# Tracks metadata for the flutter migrate command
+migration:
+  platforms:
+    - platform: root
+      create_revision: xyz
+      base_revision: xyz
+    - platform: android
+      create_revision: xyz
+      base_revision: xyz
