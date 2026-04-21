@@ -46,6 +46,7 @@ class HomeScreen extends StatelessWidget {
                     balance: service.balance,
                     income: service.totalIncome,
                     expenses: service.totalExpenses,
+                    inventory: service.inventory,
                   ),
                 ),
               ),

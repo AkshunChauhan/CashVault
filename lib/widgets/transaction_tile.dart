@@ -57,7 +57,11 @@ class TransactionTile extends StatelessWidget {
                     Text(
                       transaction.note?.isNotEmpty == true
                           ? transaction.note!
-                          : dateFormat.format(transaction.createdAt),
+                          : (transaction.denominations.isNotEmpty
+                              ? transaction.denominations.entries
+                                  .map((e) => '${e.value}x \$${e.key}')
+                                  .join(', ')
+                              : dateFormat.format(transaction.createdAt)),
                       style: theme.textTheme.labelSmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

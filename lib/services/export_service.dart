@@ -16,7 +16,7 @@ class ExportService {
 
     final buffer = StringBuffer();
     // Headers
-    buffer.writeln('Date,Type,Category,Amount,Note');
+    buffer.writeln('Date,Type,Category,Amount,Bills Summary,Note');
 
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
 
@@ -24,9 +24,12 @@ class ExportService {
       final date = dateFormat.format(tx.createdAt);
       final type = tx.isIncome ? 'Income' : 'Expense';
       final category = _escapeCsv(tx.category);
+      final billsSummary = _escapeCsv(tx.denominations.entries
+          .map((e) => '${e.value}x \$${e.key}')
+          .join(', '));
       final note = _escapeCsv(tx.note ?? '');
       
-      buffer.writeln('$date,$type,$category,${tx.amount},$note');
+      buffer.writeln('$date,$type,$category,${tx.amount},$billsSummary,$note');
     }
 
     final directory = await getTemporaryDirectory();

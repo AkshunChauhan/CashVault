@@ -40,12 +40,30 @@ class TransactionService extends ChangeNotifier {
   /// Number of transactions.
   int get count => _box.length;
 
+  /// Map of current physical inventory (Bill Value -> Count).
+  Map<int, int> get inventory {
+    final inv = <int, int>{};
+    for (var tx in _box.values) {
+      tx.denominations.forEach((billValue, count) {
+        if (tx.isIncome) {
+          inv[billValue] = (inv[billValue] ?? 0) + count;
+        } else {
+          inv[billValue] = (inv[billValue] ?? 0) - count;
+        }
+      });
+    }
+    // Clean up 0s and ignore negatives for UI cleaniness (or let user fix their negative safe)
+    return inv..removeWhere((k, v) => v == 0);
+  }
+
   /// Adds a new transaction.
   Future<void> addTransaction({
     required double amount,
     required String type,
     required String category,
     String? note,
+    Map<int, int> denominations = const {},
+    double otherAmount = 0.0,
   }) async {
     final transaction = TransactionModel(
       id: const Uuid().v4(),
@@ -54,6 +72,8 @@ class TransactionService extends ChangeNotifier {
       category: category,
       note: note?.trim().isEmpty == true ? null : note?.trim(),
       createdAt: DateTime.now(),
+      denominations: denominations,
+      otherAmount: otherAmount,
     );
 
     await _box.put(transaction.id, transaction);

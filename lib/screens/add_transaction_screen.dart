@@ -6,8 +6,6 @@ import '../models/categories.dart';
 import '../services/transaction_service.dart';
 import '../theme/app_theme.dart';
 
-/// Screen for adding a new income or expense transaction.
-/// Designed for speed: ≤ 2 taps to add an entry.
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
 
@@ -16,11 +14,21 @@ class AddTransactionScreen extends StatefulWidget {
 }
 
 class _AddTransactionScreenState extends State<AddTransactionScreen> {
-  final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+  final _otherAmountController = TextEditingController();
+  
+  // Available standard denomination bills to track
+  final List<int> _availableBills = [100, 50, 20, 10, 5, 2, 1];
+  
+  // Stores bill_value -> count
+  final Map<int, int> _denominations = {};
+  
+  // Controllers for the grid
+  final Map<int, TextEditingController> _controllers = {};
+
   final _formKey = GlobalKey<FormState>();
 
-  String _type = 'expense'; // Default to expense (most common action)
+  String _type = 'expense';
   String? _category;
   bool _isSaving = false;
 
@@ -30,13 +38,33 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   void initState() {
     super.initState();
     _category = _categories.first;
+    for (var bill in _availableBills) {
+      _controllers[bill] = TextEditingController();
+    }
+    _otherAmountController.addListener(_updateTotal);
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
     _noteController.dispose();
+    _otherAmountController.dispose();
+    for (var c in _controllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _updateTotal() {
+    setState(() {}); // Re-computes the UI total getter
+  }
+
+  double get _totalAmount {
+    double total = 0;
+    _denominations.forEach((bill, count) {
+      total += bill * count;
+    });
+    final other = double.tryParse(_otherAmountController.text) ?? 0.0;
+    return total + other;
   }
 
   @override
@@ -91,54 +119,61 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               const SizedBox(height: 28),
 
-              // ── Amount Input ──────────────────────────────────
-              Text(
-                'Amount',
-                style: theme.textTheme.labelLarge,
+              // ── Computed Amount ───────────────────────────────
+              Center(
+                child: Text(
+                  'Total Amount',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  '\$${_totalAmount.toStringAsFixed(2)}',
+                  style: theme.textTheme.displayLarge?.copyWith(
+                    fontSize: 48,
+                    color: isIncome ? AppTheme.income : AppTheme.expense,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // ── Denominations Grid ─────────────────────────────
+              Text('Physical Bills', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 12),
+              
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: _availableBills.map((bill) {
+                  return _buildDenominationInput(bill, theme);
+                }).toList(),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Coins / Other Amount ───────────────────────────
+              Text('Coins / Other', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
               TextFormField(
-                controller: _amountController,
-                autofocus: true,
+                controller: _otherAmountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
                 ],
-                style: theme.textTheme.displayLarge?.copyWith(
-                  fontSize: 32,
-                  color: isIncome ? AppTheme.income : AppTheme.expense,
-                ),
-                decoration: InputDecoration(
-                  prefixText: '\$ ',
-                  prefixStyle: theme.textTheme.displayLarge?.copyWith(
-                    fontSize: 32,
-                    color: isIncome ? AppTheme.income : AppTheme.expense,
-                  ),
+                decoration: const InputDecoration(
                   hintText: '0.00',
-                  hintStyle: theme.textTheme.displayLarge?.copyWith(
-                    fontSize: 32,
-                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.3),
-                  ),
+                  prefixText: '\$ ',
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter an amount';
-                  }
-                  final parsed = double.tryParse(value);
-                  if (parsed == null || parsed <= 0) {
-                    return 'Enter a valid amount';
-                  }
-                  return null;
-                },
               ),
 
               const SizedBox(height: 24),
 
               // ── Category ──────────────────────────────────────
-              Text(
-                'Category',
-                style: theme.textTheme.labelLarge,
-              ),
+              Text('Category', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 value: _category,
@@ -155,10 +190,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               const SizedBox(height: 24),
 
               // ── Note (optional) ───────────────────────────────
-              Text(
-                'Note (optional)',
-                style: theme.textTheme.labelLarge,
-              ),
+              Text('Note (optional)', style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _noteController,
@@ -190,6 +222,75 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDenominationInput(int bill, ThemeData theme) {
+    final count = _denominations[bill] ?? 0;
+    final w = (MediaQuery.of(context).size.width - 40 - 24) / 3;
+
+    return Container(
+      width: w,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: count > 0 
+            ? (_type == 'add' ? AppTheme.income : AppTheme.expense).withValues(alpha: 0.5) 
+            : theme.dividerTheme.color ?? Colors.grey.shade200,
+          width: count > 0 ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '\$$bill',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: count > 0 ? (_type == 'add' ? AppTheme.income : AppTheme.expense) : null,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: TextField(
+              controller: _controllers[bill],
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: InputDecoration(
+                hintText: 'Qty',
+                contentPadding: EdgeInsets.zero,
+                filled: true,
+                fillColor: theme.scaffoldBackgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  final parsed = int.tryParse(val) ?? 0;
+                  if (parsed > 0) {
+                    _denominations[bill] = parsed;
+                  } else {
+                    _denominations.remove(bill);
+                  }
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -242,16 +343,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Future<void> _save() async {
+    final total = _totalAmount;
+    if (total <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an amount greater than 0')),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
+    final otherAmount = double.tryParse(_otherAmountController.text) ?? 0.0;
+
     final service = context.read<TransactionService>();
     await service.addTransaction(
-      amount: double.parse(_amountController.text),
+      amount: total,
       type: _type,
       category: _category ?? 'Other',
       note: _noteController.text,
+      denominations: _denominations,
+      otherAmount: otherAmount,
     );
 
     if (mounted) {

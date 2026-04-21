@@ -29,6 +29,12 @@ class TransactionModel extends HiveObject {
   @HiveField(5)
   final DateTime createdAt;
 
+  @HiveField(6)
+  final Map<int, int> denominations;
+
+  @HiveField(7)
+  final double otherAmount;
+
   TransactionModel({
     required this.id,
     required this.amount,
@@ -36,6 +42,8 @@ class TransactionModel extends HiveObject {
     required this.category,
     this.note,
     required this.createdAt,
+    this.denominations = const {},
+    this.otherAmount = 0.0,
   });
 
   /// Whether this is an income transaction.
@@ -53,6 +61,8 @@ class TransactionModel extends HiveObject {
       'category': category,
       'note': note,
       'createdAt': createdAt.toIso8601String(),
+      'denominations': denominations.map((k, v) => MapEntry(k.toString(), v)),
+      'otherAmount': otherAmount,
     };
   }
 
@@ -65,6 +75,10 @@ class TransactionModel extends HiveObject {
       category: map['category'] as String,
       note: map['note'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
+      denominations: (map['denominations'] as Map<String, dynamic>?)
+              ?.map((k, v) => MapEntry(int.parse(k), v as int)) ??
+          {},
+      otherAmount: (map['otherAmount'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
